@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import logo from './assets/logo.png'
 import './App.css'
 import { environment } from './environments/environment'
@@ -10,6 +10,8 @@ type Message = {
 }
 
 function App() {
+  const [usedToken, setUsedToken] = useState(0);
+  const [isHistory, setIsHistory] = useState(true);
   const [messages, setMessages] = useState<Message[]>([{
     message: 'Hello, I am Torado!',
     sender: "Torado",
@@ -19,11 +21,15 @@ function App() {
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
 
+  useEffect(() => {
+    if(!isHistory) setUsedToken(0);
+  }, [isHistory]);
+
   const handleSend = () => {
     setText('');
     const newMessage = { message: text, sender: 'User', direction: 'right' };
 
-    const newMessages = [ ...messages, newMessage];
+    const newMessages = [ ...( isHistory ? messages : []), newMessage];
     setMessages(newMessages);
 
     // update our messages state
@@ -60,10 +66,10 @@ function App() {
     }).then((data) => {
       return data.json();
     }).then((data) => {
-      console.log('data.choices[0].message : ', data.choices[0].message);
-
       const { role , content } = data.choices[0].message;
-      
+      const { usage: { total_tokens } } = data;
+      setUsedToken(pre => isHistory ?  pre + total_tokens : total_tokens);
+
       const newMsg = {...data.choices[0].message, message: content, sender: role, direction: 'left'}
       console.log('data : ', data);
       setMessages((pre) => ([...pre, newMsg]));
@@ -84,13 +90,27 @@ function App() {
       <div className="h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-blue-500">
         <div className="w-full max-w-xl bg-white rounded-lg shadow-md">
           {/* Chat header */}
-          <div className="border-b border-gray-300 p-4 flex items-center">
-            <img
-              className="w-10 h-10 rounded-full mr-3"
-              src={logo}
-              alt="User Profile"
-            />
-            <h2 className="text-lg font-semibold text-gray-800">Torado</h2>
+          <div className="border-b border-gray-300 p-4 flex justify-between items-center">
+            <div className='flex items-center'>
+              <img
+                className="w-10 h-10 rounded-full mr-3"
+                src={logo}
+                alt="User Profile"
+              />
+              <h2 className="text-lg font-semibold text-gray-800">Torado</h2>
+            </div>
+            <div>
+              <p>Token used: {usedToken}</p>
+            </div>
+            <div className='flex items-center'>
+              <input
+                type="checkbox"
+                checked={isHistory}
+                onChange={() => {setIsHistory(!isHistory);}}
+                className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring focus:ring-blue-200"
+              />
+              <label className="ml-2 text-gray-700">Includen History</label>
+            </div>
           </div>
           {/* Chat messages */}
           <div className="p-4 h-64 overflow-y-auto scrollbar-none">
